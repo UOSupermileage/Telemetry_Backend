@@ -1,6 +1,4 @@
 from pydantic import BaseModel, Field, ConfigDict
-from dotenv import load_dotenv
-load_dotenv()
 
 ## Fast API Classes
 class CarBase(BaseModel):
