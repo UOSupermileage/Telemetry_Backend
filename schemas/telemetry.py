@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -23,3 +24,12 @@ class TelemetryUpdate(BaseModel):
   speed: float | None = Field(None, ge=0)
   current: float | None = Field(None, ge=0)
   voltage: float | None = Field(None, ge=0)
+
+
+class TelemetryImportRun(BaseModel):
+  car_id: int = Field(..., description='Car used for the run')
+  driver_id: int = Field(..., description='Driver of the run')
+  location_id: int = Field(..., description='Location of the run')
+  started_at: datetime = Field(..., description='Time the run started')
+  ended_at: datetime | None = Field(None, description='Time the run ended')
+  notes: str | None = Field(None, description='Notes about the run')
