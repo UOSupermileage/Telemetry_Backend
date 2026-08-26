@@ -43,15 +43,7 @@ def import_telemetry(
   df = read_telemetry_csv(file)
 
   try:
-    db_run = DBRun(
-      car_id=run_data.car_id,
-      driver_id=run_data.driver_id,
-      location_id=run_data.location_id,
-      started_at=run_data.started_at,
-      ended_at=run_data.ended_at,
-      notes=run_data.notes
-    )
-
+    db_run = DBRun(**run_data.model_dump())
     db.add(db_run)
     db.flush()
 
