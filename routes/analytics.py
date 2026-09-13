@@ -14,8 +14,15 @@ router = APIRouter()
 
 @router.get('/analytics/runs/{run_id}', response_model=RunAnalytics)
 def get_run_analytics(run_id: int, db: Session = Depends(get_db)):
-  run = db.get(DBRun, run_id)
+  """
+  Calculate analytics for a specific run from its telemetry data.
+  :param run_id: The unique ID of the run to calculate analytics for.
+  :param db: Database session used to retrieve the run and telemetry data.
+  :return: Run analytics including telemetry statistics and run duration.
+  :raises HTTPException: 404 if the run or its telemetry cannot be found.
+  """
 
+  run = db.get(DBRun, run_id)
   if run is None:
     raise HTTPException(status_code=404, detail='Run not found')
 

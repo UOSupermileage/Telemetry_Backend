@@ -2,6 +2,13 @@ import pandas as pd
 
 
 def calculate_run_analytics(df: pd.DataFrame) -> dict:
+  """
+  Calculate summary analytics from vehicle telemetry data.
+  :param df: DataFrame containing telemetry data with columns for
+               speed, throttle, current, and voltage.
+  :return: Dictionary containing telemetry point count and summary
+             statistics for speed, throttle, current, and voltage.
+  """
   return {
     'telemetry_points': len(df),
     'average_speed': df['speed'].mean(),
