@@ -10,8 +10,17 @@ from schemas.driver_team_history import DriverTeamHistoryCreate, DriverTeamHisto
 
 router = APIRouter()
 
-
+#Validation function
 def history_overlaps(db: Session, driver_id: int, started_at, ended_at, exclude_history_id: int | None = None):
+  """
+  Check whether a driver's team assignment overlaps an existing assignment.
+  :param db: Database session used to query driver team history.
+  :param driver_id: The ID of the driver being checked.
+  :param started_at: Start time of the assignment.
+  :param ended_at: End time of the assignment, or None if ongoing.
+  :param exclude_history_id: Optional history ID to exclude from the check.
+  :return: True if an overlapping assignment exists, otherwise False.
+  """
   query = db.query(DBDriverTeamHistory).filter(DBDriverTeamHistory.driver_id == driver_id)
 
   if exclude_history_id is not None:
@@ -35,15 +44,26 @@ def history_overlaps(db: Session, driver_id: int, started_at, ended_at, exclude_
 
   return query.first() is not None
 
-
 @router.get('/driver-team-history', response_model=list[DriverTeamHistory])
 def get_all_driver_team_history(db: Session = Depends(get_db)):
+  """
+  Retrieve all driver team history records from the database.
+  :param db: Database session used to retrieve the history records.
+  :return: List of all driver team history records.
+  """
   history = db.query(DBDriverTeamHistory).all()
   return history
 
-
 @router.get('/driver-team-history/{history_id}', response_model=DriverTeamHistory)
 def get_driver_team_history(history_id: int, db: Session = Depends(get_db)):
+  """
+  Retrieve a specific driver team history record by ID.
+  :param history_id: The unique ID of the history record.
+  :param db: Database session used to retrieve the history record.
+  :return: The requested driver team history record.
+  :raises HTTPException: 404 if the history record is not found.
+  """
+
   history = db.get(DBDriverTeamHistory, history_id)
 
   if history is None:
@@ -54,6 +74,16 @@ def get_driver_team_history(history_id: int, db: Session = Depends(get_db)):
 
 @router.post('/driver-team-history', response_model=DriverTeamHistory)
 def create_driver_team_history(history: DriverTeamHistoryCreate, db: Session = Depends(get_db)):
+  """
+  Create a new driver team history record.
+  :param history: Data for the driver team assignment to be created.
+  :param db: Database session used to create and store the history record.
+  :return: The newly created driver team history record.
+  :raises HTTPException: 400 if the end time is not after the start time.
+  :raises HTTPException: 404 if the driver or team is not found.
+  :raises HTTPException: 409 if the assignment overlaps an existing assignment.
+  """
+
   if history.ended_at is not None and history.ended_at <= history.started_at:
     raise HTTPException(status_code=400, detail='ended_at must be after started_at')
 
@@ -86,6 +116,16 @@ def create_driver_team_history(history: DriverTeamHistoryCreate, db: Session = D
 
 @router.patch('/driver-team-history/{history_id}', response_model=DriverTeamHistory)
 def update_driver_team_history(history_id: int, history_update: DriverTeamHistoryUpdate, db: Session = Depends(get_db)):
+  """
+  Update an existing driver team history record.
+  :param history_id: The unique ID of the history record to update.
+  :param history_update: The fields to update on the history record.
+  :param db: Database session used to retrieve and update the record.
+  :return: The updated driver team history record.
+  :raises HTTPException: 400 if the end time is not after the start time.
+  :raises HTTPException: 404 if the history record, driver, or team is not found.
+  :raises HTTPException: 409 if the updated assignment overlaps another assignment.
+  """
   history = db.get(DBDriverTeamHistory, history_id)
 
   if history is None:
@@ -125,6 +165,13 @@ def update_driver_team_history(history_id: int, history_update: DriverTeamHistor
 
 @router.delete('/driver-team-history/{history_id}')
 def delete_driver_team_history(history_id: int, db: Session = Depends(get_db)):
+  """
+  Delete a driver team history record from the database.
+  :param history_id: The unique ID of the history record to delete.
+  :param db: Database session used to retrieve and delete the record.
+  :return: Confirmation message containing the deleted history ID.
+  :raises HTTPException: 404 if the history record is not found.
+  """
   history = db.get(DBDriverTeamHistory, history_id)
 
   if history is None:

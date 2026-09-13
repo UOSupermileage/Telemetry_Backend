@@ -26,6 +26,22 @@ def import_telemetry(
     notes: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
+  """
+  Import telemetry data from a CSV file and create a new run.
+  The CSV file is validated and its telemetry data is stored in the
+  database along with the associated run information.
+
+  :param file: CSV file containing the telemetry data.
+  :param car_id: ID of the car associated with the run.
+  :param driver_id: ID of the driver associated with the run.
+  :param location_id: ID of the location where the run took place.
+  :param started_at: Start time of the run.
+  :param ended_at: End time of the run, if the run has ended.
+  :param notes: Optional notes associated with the run.
+  :param db: Database session used to store the run and telemetry data.
+  :return: Confirmation message containing the run ID and number of telemetry rows imported.
+  :raises HTTPException: 500 if the telemetry data cannot be stored.
+  """
   validate_csv_file(file)
 
   run_data = TelemetryImportRun(
@@ -70,7 +86,13 @@ def import_telemetry(
 
 @router.get('/telemetry/export')
 def export_telemetry(run_id: int,db: Session = Depends(get_db)):
-
+  """
+  Export telemetry data for a run as a CSV file.
+  :param run_id: ID of the run whose telemetry should be exported.
+  :param db: Database session used to retrieve the telemetry data.
+  :return: Streaming CSV response containing the run's telemetry data.
+  :raises HTTPException: 404 if no telemetry is found for the specified run.
+  """
   #Query all telemetry data with run id
   telemetry = (
     db.query(DBTelemetry)
