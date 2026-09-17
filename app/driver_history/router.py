@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from database.driver import DBDriver
-from database.driver_team_history import DBDriverTeamHistory
-from database.team import DBTeam
-from db import get_db
-from schemas.driver_team_history import DriverTeamHistoryCreate, DriverTeamHistory, DriverTeamHistoryUpdate
+from app.driver.repository import DBDriver
+from app.driver_history.repository import DBDriverTeamHistory
+from app.teams.repository import DBTeam
+from app.db.connection import get_db
+from app.driver_history.schema import DriverTeamHistoryCreate, DriverTeamHistory, DriverTeamHistoryUpdate
 
 router = APIRouter()
 

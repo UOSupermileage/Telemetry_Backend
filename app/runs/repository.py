@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import BigInteger, ForeignKey, Text, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db import Base
+from app.db.connection import Base
 
 
 class DBRun(Base):

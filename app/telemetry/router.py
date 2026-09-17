@@ -6,12 +6,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
-from database.run import DBRun
-from database.telemetry import DBTelemetry
-from db import get_db
-from schemas.telemetry import TelemetryImportRun
-from validators.run import validate_run_data
-from validators.telemetry import validate_csv_file, read_telemetry_csv
+from app.runs.repository import DBRun
+from app.telemetry.repository import DBTelemetry
+from app.db.connection import get_db
+from app.telemetry.schema import TelemetryImportRun
+from app.runs.validator import validate_run_data
+from app.telemetry.validator import validate_csv_file, read_telemetry_csv
 router = APIRouter()
 
 
