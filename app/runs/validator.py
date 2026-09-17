@@ -1,10 +1,10 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from database.car import DBCar
-from database.driver import DBDriver
-from database.location import DBLocation
-from schemas.telemetry import TelemetryImportRun
+from app.cars.repository import DBCar
+from app.driver.repository import DBDriver
+from app.locations.repository import DBLocation
+from app.telemetry.schema import TelemetryImportRun
 
 
 def validate_run_data(db: Session, run_data: TelemetryImportRun) -> None:

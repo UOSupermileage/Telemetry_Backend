@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db import Base
+from app.db.connection import Base
 
 
 class DBDriver(Base):

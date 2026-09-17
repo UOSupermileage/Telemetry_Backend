@@ -1,11 +1,11 @@
 from fastapi import FastAPI
-from routes.analytics import router as analytics_router
-from routes.car import router as car_router
-from routes.driver import router as driver_router
-from routes.location import router as location_router
-from routes.team import router as team_router
-from routes.driver_team_history import router as driver_team_history_router
-from routes.telemetry import router as telemetry_router
+from app.analytics.router import router as analytics_router
+from app.cars.router import router as car_router
+from app.driver.router import router as driver_router
+from app.locations.router import router as location_router
+from app.teams.router import router as team_router
+from app.driver_history.router import router as driver_team_history_router
+from app.telemetry.router import router as telemetry_router
 
 app = FastAPI()
 

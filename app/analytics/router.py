@@ -3,11 +3,11 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database.run import DBRun
-from database.telemetry import DBTelemetry
-from db import get_db
-from schemas.analytics import RunAnalytics
-from analytics.run import calculate_run_analytics
+from app.runs.repository import DBRun
+from app.telemetry.repository import DBTelemetry
+from app.db.connection import get_db
+from app.analytics.schema import RunAnalytics
+from app.analytics.calculations import calculate_run_analytics
 
 router = APIRouter()
 

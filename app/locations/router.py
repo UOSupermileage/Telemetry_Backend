@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database.location import DBLocation
-from db import get_db
-from schemas.location import LocationCreate, Location, LocationUpdate
+from app.locations.repository import DBLocation
+from app.db.connection import get_db
+from app.locations.schema import LocationCreate, Location, LocationUpdate
 
 router = APIRouter()
 

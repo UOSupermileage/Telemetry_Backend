@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, ForeignKey, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db import Base
+from app.db.connection import Base
 
 
 class DBCar(Base):
