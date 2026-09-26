@@ -1,8 +1,10 @@
 import csv
 import io
 from datetime import datetime
-from typing import Any
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from typing import Any, Literal
+
+import pandas as pd
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
@@ -12,6 +14,7 @@ from app.db.connection import get_db
 from app.telemetry.schema import TelemetryImportRun
 from app.runs.validator import validate_run_data
 from app.telemetry.validator import validate_csv_file, read_telemetry_csv
+
 router = APIRouter()
 
 
@@ -85,7 +88,7 @@ def import_telemetry(
 
 
 @router.get('/telemetry/export')
-def export_telemetry(run_id: int,db: Session = Depends(get_db)):
+def export_telemetry(run_id: int, db: Session = Depends(get_db)):
   """
   Export telemetry data for a run as a CSV file.
   :param run_id: ID of the run whose telemetry should be exported.
@@ -93,7 +96,7 @@ def export_telemetry(run_id: int,db: Session = Depends(get_db)):
   :return: Streaming CSV response containing the run's telemetry data.
   :raises HTTPException: 404 if no telemetry is found for the specified run.
   """
-  #Query all telemetry data with run id
+  # Query all telemetry data with run id
   telemetry = (
     db.query(DBTelemetry)
     .filter(DBTelemetry.run_id == run_id)
@@ -109,7 +112,7 @@ def export_telemetry(run_id: int,db: Session = Depends(get_db)):
   output = io.StringIO()
   writer = csv.writer(output)
 
-  #Build column headers
+  # Build column headers
   writer.writerow([
     'tick',
     'throttle',
@@ -118,7 +121,7 @@ def export_telemetry(run_id: int,db: Session = Depends(get_db)):
     'voltage',
   ])
 
-  #Write telemetry values to each column
+  # Write telemetry values to each column
   for row in telemetry:
     writer.writerow([
       row.tick,
@@ -130,7 +133,7 @@ def export_telemetry(run_id: int,db: Session = Depends(get_db)):
 
   output.seek(0)
 
-  #Export CSV for Download
+  # Export CSV for Download
   return StreamingResponse(
     iter([output.getvalue()]),
     media_type='text/csv',
@@ -140,3 +143,69 @@ def export_telemetry(run_id: int,db: Session = Depends(get_db)):
       )
     },
   )
+
+
+@router.get("/telemetry/data")
+def get_telemetry_data(
+    run_id: int,
+    start_tick: int | None = Query(None, ge=0),
+    end_tick: int | None = Query(None, ge=0),
+    fields: list[
+      Literal["tick", "throttle", "speed", "current", "voltage"]
+    ] = Query(["tick", "speed"]),
+    db: Session = Depends(get_db),
+):
+  if start_tick is not None and end_tick is not None:
+    if start_tick > end_tick:
+      raise HTTPException(
+        status_code=400,
+        detail="start_tick must be less than or equal to end_tick",
+      )
+
+  # Map API field names to database columns
+  available_columns = {
+    "tick": DBTelemetry.tick,
+    "throttle": DBTelemetry.throttle,
+    "speed": DBTelemetry.speed,
+    "current": DBTelemetry.current,
+    "voltage": DBTelemetry.voltage,
+  }
+
+  # Make sure tick is included so the returned data can still be
+  # associated with a point in time.
+  if "tick" not in fields:
+    fields.insert(0, "tick")
+
+  selected_columns = [
+    available_columns[field]
+    for field in fields
+  ]
+
+  query = (
+    db.query(*selected_columns)
+    .filter(DBTelemetry.run_id == run_id)
+  )
+
+  if start_tick is not None:
+    query = query.filter(DBTelemetry.tick >= start_tick)
+
+  if end_tick is not None:
+    query = query.filter(DBTelemetry.tick <= end_tick)
+
+  query = query.order_by(DBTelemetry.tick)
+
+  telemetry = query.all()
+
+  if not telemetry:
+    raise HTTPException(
+      status_code=404,
+      detail=f"No telemetry found for run {run_id}",
+    )
+
+  # Convert query results into a DataFrame
+  df = pd.DataFrame(
+    telemetry,
+    columns=fields,
+  )
+
+  return df.to_dict(orient="records")
