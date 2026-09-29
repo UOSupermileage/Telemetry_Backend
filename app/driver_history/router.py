@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.driver.repository import DBDriver
 from app.driver_history.repository import DBDriverTeamHistory
@@ -45,13 +45,20 @@ def history_overlaps(db: Session, driver_id: int, started_at, ended_at, exclude_
   return query.first() is not None
 
 @router.get('/driver-team-history', response_model=list[DriverTeamHistory])
-def get_all_driver_team_history(db: Session = Depends(get_db)):
+def get_all_driver_team_history(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
   """
   Retrieve all driver team history records from the database.
   :param db: Database session used to retrieve the history records.
   :return: List of all driver team history records.
   """
-  history = db.query(DBDriverTeamHistory).all()
+  history = (
+    db.query(DBDriverTeamHistory)
+    .options(joinedload(DBDriverTeamHistory.driver), joinedload(DBDriverTeamHistory.team))
+    .order_by(DBDriverTeamHistory.history_id)
+    .offset(offset)
+    .limit(limit)
+    .all()
+  )
   return history
 
 @router.get('/driver-team-history/{history_id}', response_model=DriverTeamHistory)
@@ -64,7 +71,12 @@ def get_driver_team_history(history_id: int, db: Session = Depends(get_db)):
   :raises HTTPException: 404 if the history record is not found.
   """
 
-  history = db.get(DBDriverTeamHistory, history_id)
+  history = (
+    db.query(DBDriverTeamHistory)
+    .options(joinedload(DBDriverTeamHistory.driver), joinedload(DBDriverTeamHistory.team))
+    .filter(DBDriverTeamHistory.history_id == history_id)
+    .first()
+  )
 
   if history is None:
     raise HTTPException(status_code=404, detail='Driver team history not found')

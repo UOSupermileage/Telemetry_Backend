@@ -1,8 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RunAnalytics(BaseModel):
   run_id: int
+  run_name: str = Field(..., serialization_alias='runName')
   telemetry_points: int
   duration_seconds: float | None = None
   average_speed: float | None = None
@@ -14,4 +15,3 @@ class RunAnalytics(BaseModel):
   average_voltage: float | None = None
   min_voltage: float | None = None
   max_voltage: float | None = None
-  distance: float | None = None

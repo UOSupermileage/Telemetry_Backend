@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.locations.repository import DBLocation
@@ -9,13 +9,13 @@ router = APIRouter()
 
 
 @router.get('/locations', response_model=list[Location])
-def get_all_locations(db: Session = Depends(get_db)):
+def get_all_locations(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
   """
   Retrieve all locations from the database.
   :param db: Database session used to retrieve the location data.
   :return: List of all locations.
   """
-  locations = db.query(DBLocation).all()
+  locations = db.query(DBLocation).order_by(DBLocation.location_id).offset(offset).limit(limit).all()
   return locations
 
 @router.get('/locations/{location_id}', response_model=Location)

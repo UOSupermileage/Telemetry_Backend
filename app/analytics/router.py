@@ -1,13 +1,11 @@
-import pandas as pd
-
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.runs.repository import DBRun
 from app.telemetry.repository import DBTelemetry
 from app.db.connection import get_db
 from app.analytics.schema import RunAnalytics
-from app.analytics.calculations import calculate_run_analytics
 
 router = APIRouter()
 
@@ -26,25 +24,33 @@ def get_run_analytics(run_id: int, db: Session = Depends(get_db)):
   if run is None:
     raise HTTPException(status_code=404, detail='Run not found')
 
-  telemetry = db.query(DBTelemetry).filter(DBTelemetry.run_id == run_id).order_by(DBTelemetry.tick).all()
+  aggregates = db.execute(
+    select(
+      func.count(DBTelemetry.tick),
+      func.avg(DBTelemetry.speed),
+      func.max(DBTelemetry.speed),
+      func.avg(DBTelemetry.throttle),
+      func.max(DBTelemetry.throttle),
+      func.avg(DBTelemetry.current),
+      func.max(DBTelemetry.current),
+      func.avg(DBTelemetry.voltage),
+      func.min(DBTelemetry.voltage),
+      func.max(DBTelemetry.voltage),
+    ).where(DBTelemetry.run_id == run_id)
+  ).one()
 
-  if not telemetry:
+  if aggregates[0] == 0:
     raise HTTPException(status_code=404, detail='No telemetry found for run')
-
-  df = pd.DataFrame([{
-    'tick': row.tick,
-    'throttle': row.throttle,
-    'speed': row.speed,
-    'current': row.current,
-    'voltage': row.voltage
-  } for row in telemetry])
-
-  analytics = calculate_run_analytics(df)
-
-  analytics['run_id'] = run_id
-  analytics['duration_seconds'] = (
+  analytics = dict(zip((
+    'telemetry_points',
+    'average_speed', 'max_speed',
+    'average_throttle', 'max_throttle',
+    'average_current', 'max_current',
+    'average_voltage', 'min_voltage', 'max_voltage',
+  ), aggregates))
+  analytics.update(run_id=run_id, run_name=run.name, duration_seconds=(
     (run.ended_at - run.started_at).total_seconds()
     if run.ended_at else None
-  )
+  ))
 
   return analytics

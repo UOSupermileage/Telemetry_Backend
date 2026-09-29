@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload
 
 from app.cars.repository import DBCar
 from app.teams.repository import DBTeam
@@ -10,13 +10,13 @@ router = APIRouter()
 
 
 @router.get('/cars', response_model=list[Car])
-def get_all_cars(db: Session = Depends(get_db)):
+def get_all_cars(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
   """
   Gets all cars from the database table
   :param db: Database session used to retrieve the car data.
   :return: List of cars
   """
-  cars = db.query(DBCar).all()
+  cars = db.query(DBCar).options(joinedload(DBCar.team)).order_by(DBCar.car_id).offset(offset).limit(limit).all()
   return cars
 
 @router.get('/cars/{car_id}', response_model=Car)
@@ -29,7 +29,7 @@ def get_car(car_id: int, db: Session = Depends(get_db)):
   :raises HTTPException: 404 if the car cannot be found.
   """
 
-  car = db.get(DBCar, car_id)
+  car = db.query(DBCar).options(joinedload(DBCar.team)).filter(DBCar.car_id == car_id).first()
   if car is None:
     raise HTTPException(status_code=404, detail='Car not found')
 
@@ -86,6 +86,7 @@ def update_car(car_id: int, car_update: CarUpdate, db: Session = Depends(get_db)
 
   db.commit()
   db.refresh(car)
+  db.expire(car, ['team'])
 
   return car
 

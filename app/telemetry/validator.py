@@ -1,9 +1,11 @@
 from fastapi import HTTPException, UploadFile
 import pandas as pd
+import numpy as np
 
 REQUIRED_COLUMNS = {'tick', 'throttle', 'speed', 'current', 'voltage'}
 NUMERIC_COLUMNS = ['tick', 'throttle', 'speed', 'current', 'voltage']
 NON_NEGATIVE_COLUMNS = ['throttle', 'speed', 'current', 'voltage']
+MAX_CSV_BYTES = 100 * 1024 * 1024
 
 
 def validate_csv_file(file: UploadFile) -> None:
@@ -14,6 +16,11 @@ def validate_csv_file(file: UploadFile) -> None:
   """
   if not file.filename or not file.filename.lower().endswith('.csv'):
     raise HTTPException(status_code=400, detail='File must be a CSV')
+  file.file.seek(0, 2)
+  file_size = file.file.tell()
+  file.file.seek(0)
+  if file_size > MAX_CSV_BYTES:
+    raise HTTPException(status_code=413, detail='CSV file exceeds the 100 MB limit')
 
 def read_telemetry_csv(file: UploadFile) -> pd.DataFrame:
   """
@@ -61,7 +68,11 @@ def convert_numeric_columns(df: pd.DataFrame) -> None:
   :param df: Telemetry DataFrame whose numeric columns should be converted.
   """
   for column in NUMERIC_COLUMNS:
-    df[column] = pd.to_numeric(df[column], errors='coerce')
+    converted = pd.to_numeric(df[column], errors='coerce')
+    invalid = df[column].notna() & converted.isna()
+    if invalid.any():
+      raise HTTPException(status_code=400, detail=f'{column} contains invalid numeric values')
+    df[column] = converted
 
 def validate_telemetry_values(df: pd.DataFrame) -> None:
   """
@@ -80,8 +91,15 @@ def validate_telemetry_values(df: pd.DataFrame) -> None:
   if df['tick'].isna().any():
     raise HTTPException(status_code=400, detail='CSV contains invalid tick values')
 
+  for column in NUMERIC_COLUMNS:
+    if not np.isfinite(df[column].dropna()).all():
+      raise HTTPException(status_code=400, detail=f'{column} must contain finite numeric values')
+
   if (df['tick'] < 0).any():
     raise HTTPException(status_code=400, detail='Telemetry tick cannot be negative')
+
+  if (df['tick'] % 1 != 0).any():
+    raise HTTPException(status_code=400, detail='Telemetry tick must be an integer')
 
   if df['tick'].duplicated().any():
     raise HTTPException(status_code=400, detail='CSV contains duplicate ticks')

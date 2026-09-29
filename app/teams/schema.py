@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
+from app.core.patch_schema import PatchSchema
 
 class TeamBase(BaseModel):
   team_name: str = Field(..., min_length=1, max_length=100, description='Name of the team')
@@ -10,5 +11,5 @@ class Team(TeamBase):
   team_id: int = Field(..., description='Unique id of the team')
   model_config = ConfigDict(from_attributes=True)
 
-class TeamUpdate(BaseModel):
+class TeamUpdate(PatchSchema):
   team_name: str | None = Field(None, min_length=1, max_length=100)

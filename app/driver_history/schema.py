@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
+from app.core.patch_schema import PatchSchema
 
 
 class DriverTeamHistoryBase(BaseModel):
@@ -12,11 +13,16 @@ class DriverTeamHistoryBase(BaseModel):
 class DriverTeamHistoryCreate(DriverTeamHistoryBase):
   pass
 
-class DriverTeamHistory(DriverTeamHistoryBase):
+class DriverTeamHistory(BaseModel):
   history_id: int = Field(..., description='Unique id of the driver team history record')
+  driver_name: str = Field(..., serialization_alias='driverName')
+  team_name: str = Field(..., serialization_alias='teamName')
+  started_at: datetime
+  ended_at: datetime | None
   model_config = ConfigDict(from_attributes=True)
 
-class DriverTeamHistoryUpdate(BaseModel):
+class DriverTeamHistoryUpdate(PatchSchema):
+  nullable_fields = frozenset({'ended_at'})
   driver_id: int | None = Field(None, description='Driver assigned to the team')
   team_id: int | None = Field(None, description='Team the driver belongs to')
   started_at: datetime | None = Field(None, description='When the driver joined the team')
