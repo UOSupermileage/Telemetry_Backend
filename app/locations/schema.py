@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
+from app.core.patch_schema import PatchSchema
 
 
 class LocationBase(BaseModel):
@@ -12,6 +13,7 @@ class Location(LocationBase):
   location_id: int = Field(..., description='Unique id of the location')
   model_config = ConfigDict(from_attributes=True)
 
-class LocationUpdate(BaseModel):
+class LocationUpdate(PatchSchema):
+  nullable_fields = frozenset({'address'})
   name: str | None = Field(None, min_length=1, max_length=200)
   address: str | None = Field(None, max_length=500)

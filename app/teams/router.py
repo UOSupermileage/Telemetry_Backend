@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.teams.repository import DBTeam
@@ -9,13 +9,13 @@ router = APIRouter()
 
 
 @router.get('/teams', response_model=list[Team])
-def get_all_teams(db: Session = Depends(get_db)):
+def get_all_teams(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
   """
   Retrieve all teams from the database.
   :param db: Database session used to retrieve the team data.
   :return: List of all teams.
   """
-  teams = db.query(DBTeam).all()
+  teams = db.query(DBTeam).order_by(DBTeam.team_id).offset(offset).limit(limit).all()
   return teams
 
 @router.get('/teams/{team_id}', response_model=Team)

@@ -1,11 +1,11 @@
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-CREATE TABLE teams (
+CREATE TABLE IF NOT EXISTS teams (
     team_id BIGSERIAL PRIMARY KEY,
     team_name VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE cars (
+CREATE TABLE IF NOT EXISTS cars (
     car_id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     year_created SMALLINT NOT NULL CHECK (year_created >= 1886),
@@ -16,13 +16,13 @@ CREATE TABLE cars (
         ON DELETE RESTRICT
 );
 
-CREATE TABLE drivers (
+CREATE TABLE IF NOT EXISTS drivers (
     driver_id BIGSERIAL PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE driver_team_history (
+CREATE TABLE IF NOT EXISTS driver_team_history (
     history_id BIGSERIAL PRIMARY KEY,
     driver_id BIGINT NOT NULL,
     team_id BIGINT NOT NULL,
@@ -53,14 +53,15 @@ CREATE TABLE driver_team_history (
         )
 );
 
-CREATE TABLE locations (
+CREATE TABLE IF NOT EXISTS locations (
     location_id BIGSERIAL PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     address VARCHAR(500)
 );
 
-CREATE TABLE runs (
+CREATE TABLE IF NOT EXISTS runs (
     run_id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
     car_id BIGINT NOT NULL,
     location_id BIGINT NOT NULL,
     driver_id BIGINT NOT NULL,
@@ -88,7 +89,11 @@ CREATE TABLE runs (
         CHECK (ended_at IS NULL OR ended_at > started_at)
 );
 
-CREATE TABLE telemetry (
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS name VARCHAR(100);
+UPDATE runs SET name = 'Run ' || run_id WHERE name IS NULL;
+ALTER TABLE runs ALTER COLUMN name SET NOT NULL;
+
+CREATE TABLE IF NOT EXISTS telemetry (
     run_id BIGINT NOT NULL,
     tick BIGINT NOT NULL,
     throttle REAL,
@@ -119,3 +124,9 @@ CREATE TABLE telemetry (
     CONSTRAINT telemetry_voltage_check
         CHECK (voltage IS NULL OR voltage >= 0)
 );
+
+CREATE INDEX IF NOT EXISTS ix_cars_team_id ON cars(team_id);
+CREATE INDEX IF NOT EXISTS ix_driver_team_history_team_id ON driver_team_history(team_id);
+CREATE INDEX IF NOT EXISTS ix_runs_car_id ON runs(car_id);
+CREATE INDEX IF NOT EXISTS ix_runs_location_id ON runs(location_id);
+CREATE INDEX IF NOT EXISTS ix_runs_driver_id ON runs(driver_id);

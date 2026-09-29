@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.driver.repository import DBDriver
@@ -8,13 +8,13 @@ from app.driver.schema import DriverCreate, Driver, DriverUpdate
 router = APIRouter()
 
 @router.get('/drivers', response_model=list[Driver])
-def get_all_drivers(db: Session = Depends(get_db)):
+def get_all_drivers(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
   """
   Retrieve all drivers from the database.
   :param db: Database session used to retrieve the driver data.
   :return: List of all drivers.
   """
-  drivers = db.query(DBDriver).all()
+  drivers = db.query(DBDriver).order_by(DBDriver.driver_id).offset(offset).limit(limit).all()
   return drivers
 
 @router.get('/drivers/{driver_id}', response_model=Driver)

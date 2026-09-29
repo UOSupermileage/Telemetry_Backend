@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
+from app.core.patch_schema import PatchSchema
 
 
 class DriverBase(BaseModel):
@@ -15,6 +16,6 @@ class Driver(DriverBase):
   model_config = ConfigDict(from_attributes=True)
 
 
-class DriverUpdate(BaseModel):
+class DriverUpdate(PatchSchema):
   first_name: str | None = Field(None, min_length=1, max_length=100)
   last_name: str | None = Field(None, min_length=1, max_length=100)

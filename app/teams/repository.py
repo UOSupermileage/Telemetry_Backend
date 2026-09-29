@@ -5,4 +5,4 @@ from app.db.connection import Base
 class DBTeam(Base):
   __tablename__ = 'teams'
   team_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-  team_name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+  team_name: Mapped[str] = mapped_column(String(100), nullable=False)
