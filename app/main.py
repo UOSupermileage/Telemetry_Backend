@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.analytics.router import router as analytics_router
 from app.cars.router import router as car_router
 from app.driver.router import router as driver_router
@@ -9,6 +10,15 @@ from app.driver_history.router import router as driver_team_history_router
 from app.telemetry.router import router as telemetry_router
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 app.include_router(car_router, tags=['Cars'])
 app.include_router(driver_router, tags=['Drivers'])
