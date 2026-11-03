@@ -1,15 +1,16 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 from app.core.patch_schema import PatchSchema
+from app.telemetry.units import TICK, THROTTLE, SPEED, CURRENT, VOLTAGE
 
 
 class TelemetryBase(BaseModel):
   run_id: int = Field(..., description='Run the telemetry belongs to')
-  tick: int = Field(..., ge=0, description='Telemetry tick')
-  throttle: float | None = Field(None, ge=0, description='Throttle value')
-  speed: float | None = Field(None, ge=0, description='Speed value')
-  current: float | None = Field(None, ge=0, description='Current value')
-  voltage: float | None = Field(None, ge=0, description='Voltage value')
+  tick: int = Field(..., ge=0, description=TICK)
+  throttle: float | None = Field(None, ge=0, le=1000, description=THROTTLE)
+  speed: float | None = Field(None, ge=0, description=SPEED)
+  current: float | None = Field(None, ge=0, description=CURRENT)
+  voltage: float | None = Field(None, ge=0, description=VOLTAGE)
 
 
 class TelemetryCreate(TelemetryBase):
@@ -21,10 +22,10 @@ class Telemetry(TelemetryBase):
 
 
 class TelemetryUpdate(PatchSchema):
-  throttle: float | None = Field(None, ge=0)
-  speed: float | None = Field(None, ge=0)
-  current: float | None = Field(None, ge=0)
-  voltage: float | None = Field(None, ge=0)
+  throttle: float | None = Field(None, ge=0, le=1000, description=THROTTLE)
+  speed: float | None = Field(None, ge=0, description=SPEED)
+  current: float | None = Field(None, ge=0, description=CURRENT)
+  voltage: float | None = Field(None, ge=0, description=VOLTAGE)
 
 
 class TelemetryImportRun(BaseModel):
@@ -32,6 +33,15 @@ class TelemetryImportRun(BaseModel):
   car_id: int = Field(..., description='Car used for the run')
   driver_id: int = Field(..., description='Driver of the run')
   location_id: int = Field(..., description='Location of the run')
-  started_at: datetime = Field(..., description='Time the run started')
-  ended_at: datetime | None = Field(None, description='Time the run ended')
+  started_at: datetime = Field(..., description='Wall-clock start timestamp; independent of sensor boot ticks')
+  ended_at: datetime | None = Field(None, description='Wall-clock end timestamp; independent of sensor boot ticks')
   notes: str | None = Field(None, description='Notes about the run')
+
+
+class TelemetryPoint(BaseModel):
+  """Selected raw telemetry fields; absent fields stay absent in responses."""
+  tick: int = Field(..., ge=0, description=TICK)
+  throttle: float | None = Field(None, description=THROTTLE)
+  speed: float | None = Field(None, description=SPEED)
+  current: float | None = Field(None, description=CURRENT)
+  voltage: float | None = Field(None, description=VOLTAGE)

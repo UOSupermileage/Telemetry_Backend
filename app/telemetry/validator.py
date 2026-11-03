@@ -104,6 +104,15 @@ def validate_telemetry_values(df: pd.DataFrame) -> None:
   if df['tick'].duplicated().any():
     raise HTTPException(status_code=400, detail='CSV contains duplicate ticks')
 
+  if not df['tick'].is_monotonic_increasing:
+    raise HTTPException(status_code=400, detail=(
+      'CSV ticks must increase in acquisition order; split boot resets or '
+      'tick rollovers into separate runs'
+    ))
+
+  if (df['throttle'].dropna() > 1000).any():
+    raise HTTPException(status_code=400, detail='throttle cannot exceed 1000 (100.0%)')
+
   for column in NON_NEGATIVE_COLUMNS:
     if (df[column].dropna() < 0).any():
       raise HTTPException(

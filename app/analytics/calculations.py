@@ -9,15 +9,20 @@ def calculate_run_analytics(df: pd.DataFrame) -> dict:
   :return: Dictionary containing telemetry point count and summary
              statistics for speed, throttle, current, and voltage.
   """
+  # Statistics deliberately retain raw sensor units, just like SQL aggregates.
+  def statistic(column, operation):
+    value = getattr(df[column], operation)()
+    return None if pd.isna(value) else float(value)
+
   return {
     'telemetry_points': len(df),
-    'average_speed': df['speed'].mean(),
-    'max_speed': df['speed'].max(),
-    'average_throttle': df['throttle'].mean(),
-    'max_throttle': df['throttle'].max(),
-    'average_current': df['current'].mean(),
-    'max_current': df['current'].max(),
-    'average_voltage': df['voltage'].mean(),
-    'min_voltage': df['voltage'].min(),
-    'max_voltage': df['voltage'].max()
+    'average_speed': statistic('speed', 'mean'),
+    'max_speed': statistic('speed', 'max'),
+    'average_throttle': statistic('throttle', 'mean'),
+    'max_throttle': statistic('throttle', 'max'),
+    'average_current': statistic('current', 'mean'),
+    'max_current': statistic('current', 'max'),
+    'average_voltage': statistic('voltage', 'mean'),
+    'min_voltage': statistic('voltage', 'min'),
+    'max_voltage': statistic('voltage', 'max')
   }
