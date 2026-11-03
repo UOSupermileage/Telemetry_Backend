@@ -5,6 +5,7 @@ from app.db.connection import Base
 
 
 class DBTelemetry(Base):
+  """Raw sensor values: tick ms since boot, throttle 0.1%, speed m/h, mA, mV."""
   __tablename__ = 'telemetry'
   __table_args__ = (
     CheckConstraint('tick >= 0', name='telemetry_tick_check'),

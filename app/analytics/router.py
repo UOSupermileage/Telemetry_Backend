@@ -36,6 +36,8 @@ def get_run_analytics(run_id: int, db: Session = Depends(get_db)):
       func.avg(DBTelemetry.voltage),
       func.min(DBTelemetry.voltage),
       func.max(DBTelemetry.voltage),
+      func.min(DBTelemetry.tick),
+      func.max(DBTelemetry.tick),
     ).where(DBTelemetry.run_id == run_id)
   ).one()
 
@@ -47,10 +49,11 @@ def get_run_analytics(run_id: int, db: Session = Depends(get_db)):
     'average_throttle', 'max_throttle',
     'average_current', 'max_current',
     'average_voltage', 'min_voltage', 'max_voltage',
-  ), aggregates))
+  ), aggregates[:10]))
+  # Imports require one boot with increasing ticks, so the span equals the sum
+  # of valid adjacent tick differences. Wall-clock run metadata is independent.
   analytics.update(run_id=run_id, run_name=run.name, duration_seconds=(
-    (run.ended_at - run.started_at).total_seconds()
-    if run.ended_at else None
+    (aggregates[11] - aggregates[10]) / 1000.0
   ))
 
   return analytics

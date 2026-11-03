@@ -9,8 +9,8 @@ class RunBase(BaseModel):
   car_id: int = Field(..., description='Car used for the run')
   location_id: int = Field(..., description='Location of the run')
   driver_id: int = Field(..., description='Driver of the run')
-  started_at: datetime = Field(..., description='Time the run started')
-  ended_at: datetime | None = Field(None, description='Time the run ended')
+  started_at: datetime = Field(..., description='Wall-clock start timestamp; independent of sensor boot ticks')
+  ended_at: datetime | None = Field(None, description='Wall-clock end timestamp; independent of sensor boot ticks')
   notes: str | None = Field(None, description='Notes about the run')
 
 class RunCreate(RunBase):
@@ -22,8 +22,8 @@ class Run(BaseModel):
   car_name: str = Field(..., serialization_alias='carName')
   driver_name: str = Field(..., serialization_alias='driverName')
   location_name: str = Field(..., serialization_alias='locationName')
-  started_at: datetime
-  ended_at: datetime | None
+  started_at: datetime = Field(..., description='Wall-clock start timestamp; independent of sensor boot ticks')
+  ended_at: datetime | None = Field(..., description='Wall-clock end timestamp; independent of sensor boot ticks')
   notes: str | None
   date_created: datetime = Field(..., description='Date the run was created')
   model_config = ConfigDict(from_attributes=True)

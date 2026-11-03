@@ -1,17 +1,18 @@
 import csv
 import io
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, or_, select
 from app.runs.repository import DBRun
 from app.telemetry.repository import DBTelemetry
 from app.db.connection import get_db
-from app.telemetry.schema import TelemetryImportRun
+from app.telemetry.schema import TelemetryImportRun, TelemetryPoint
+from app.telemetry.units import TICK
 from app.runs.validator import validate_run_data
 from app.telemetry.validator import validate_csv_file, read_telemetry_csv
 
@@ -26,13 +27,15 @@ def import_telemetry(
     car_id: int = Form(...),
     driver_id: int = Form(...),
     location_id: int = Form(...),
-    started_at: datetime = Form(...),
-    ended_at: datetime | None = Form(None),
+    started_at: datetime = Form(..., description='Wall-clock start timestamp; independent of sensor boot ticks'),
+    ended_at: datetime | None = Form(None, description='Wall-clock end timestamp; independent of sensor boot ticks'),
     notes: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
   """
-  Import telemetry data from a CSV file and create a new run.
+  Import raw telemetry and create a run. CSV units: tick ms since boot,
+  throttle tenths of a percent, speed m/h, current mA, voltage mV.
+  Ticks must increase within one boot; split resets/rollovers into separate runs.
   The CSV file is validated and its telemetry data is stored in the
   database along with the associated run information.
 
@@ -92,7 +95,8 @@ def import_telemetry(
 @router.get('/telemetry/export')
 def export_telemetry(run_id: int, db: Session = Depends(get_db)):
   """
-  Export telemetry data for a run as a CSV file.
+  Export raw sensor units: tick ms since boot, throttle tenths of a percent,
+  speed m/h, current mA, voltage mV. No display conversions are applied.
   :param run_id: ID of the run whose telemetry should be exported.
   :param db: Database session used to retrieve the telemetry data.
   :return: Streaming CSV response containing the run's telemetry data.
@@ -138,18 +142,30 @@ def export_telemetry(run_id: int, db: Session = Depends(get_db)):
   )
 
 
-@router.get("/telemetry/data")
+@router.get("/telemetry/data", response_model=list[TelemetryPoint], response_model_exclude_unset=True)
 def get_telemetry_data(
     run_id: int,
-    start_tick: int | None = Query(None, ge=0),
-    end_tick: int | None = Query(None, ge=0),
+    start_tick: int | None = Query(None, ge=0, description=TICK),
+    end_tick: int | None = Query(None, ge=0, description=TICK),
     fields: list[
       Literal["tick", "throttle", "speed", "current", "voltage"]
     ] = Query(["tick", "speed"]),
     offset: int = Query(0, ge=0),
     limit: int = Query(1000, ge=1, le=10000),
     db: Session = Depends(get_db),
+    max_points: Annotated[int | None, Query(ge=2, le=10000, description=(
+      'Optional chart point budget across the entire tick range. Returns original '
+      'readings sampled evenly by row position, including endpoints. Overrides '
+      'limit; offset must be 0. Narrow start_tick/end_tick when zooming.'
+    ))] = None,
 ):
+  """Return raw readings, optionally sampled across the requested range for charts.
+
+  Without max_points, offset/limit retain their original pagination behavior.
+  Sampling can omit short-lived extrema; use full-resolution analytics for stats.
+  """
+  if max_points is not None and offset != 0:
+    raise HTTPException(status_code=400, detail='offset must be 0 when max_points is provided')
   if start_tick is not None and end_tick is not None:
     if start_tick > end_tick:
       raise HTTPException(
@@ -168,6 +184,7 @@ def get_telemetry_data(
 
   # Make sure tick is included so the returned data can still be
   # associated with a point in time.
+  fields = list(dict.fromkeys(fields))
   if "tick" not in fields:
     fields.insert(0, "tick")
 
@@ -187,9 +204,26 @@ def get_telemetry_data(
   if end_tick is not None:
     query = query.filter(DBTelemetry.tick <= end_tick)
 
-  query = query.order_by(DBTelemetry.tick).offset(offset).limit(limit)
-
-  telemetry = query.all()
+  if max_points is None:
+    telemetry = query.order_by(DBTelemetry.tick).offset(offset).limit(limit).all()
+  else:
+    # Window functions keep the full scan in the database and transfer only the
+    # bounded result. One statement gives the count and samples one snapshot.
+    ranked = query.add_columns(
+      func.row_number().over(order_by=DBTelemetry.tick).label('_position'),
+      func.count().over().label('_total'),
+    ).subquery()
+    position, total = ranked.c._position, ranked.c._total
+    denominator = func.nullif(total - 1, 0)
+    # Select the first row and each transition between evenly spaced rank bins.
+    # For N > budget this selects exactly budget rows, including both endpoints.
+    current_bin = ((position - 1) * (max_points - 1)) // denominator
+    previous_bin = ((position - 2) * (max_points - 1)) // denominator
+    telemetry = db.execute(
+      select(*(ranked.c[field] for field in fields))
+      .where(or_(total <= max_points, position == 1, current_bin > previous_bin))
+      .order_by(ranked.c.tick)
+    ).all()
 
   if not telemetry:
     raise HTTPException(

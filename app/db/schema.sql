@@ -94,6 +94,8 @@ UPDATE runs SET name = 'Run ' || run_id WHERE name IS NULL;
 ALTER TABLE runs ALTER COLUMN name SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS telemetry (
+    -- Raw units: tick ms since boot (not epoch time), throttle 0.1%,
+    -- speed meters/hour, current mA, voltage mV. No display conversions.
     run_id BIGINT NOT NULL,
     tick BIGINT NOT NULL,
     throttle REAL,
