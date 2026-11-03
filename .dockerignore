@@ -1,0 +1,11 @@
+# Allow only the runtime source and pinned dependency manifest into the context.
+**
+!requirements.txt
+!app/
+!app/**
+**/__pycache__/
+**/*.py[cod]
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
