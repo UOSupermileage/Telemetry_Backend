@@ -9,3 +9,13 @@ services:
       - "127.0.0.1:8000:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      default: {}
+      telemetry:
+        aliases:
+          - backend
+
+networks:
+  telemetry:
+    external: true
+    name: telemetry-shared
